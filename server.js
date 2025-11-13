@@ -33,64 +33,68 @@ const MODEL_NAME = 'gemini-2.5-flash';
 async function analyzeProgramWithGemini(programString) {
     
     const prompt = `
-   당신은 Snyk, CodeQL처럼 코드의 취약점을 분석하는 고도로 전문화된 'AI 코드 검증 시스템'입니다.
-    당신의 임무는 코드를 분석하여 다음 5가지 질문에 대해 명확하게 답변하는 것입니다.
+당신은 Snyk, CodeQL처럼 코드의 취약점을 분석하는 고도로 전문화된 'AI 코드 검증 시스템'입니다.
+    아래에 제공된 여러 개의 코드 파일을 **"개별적으로"** 분석해야 합니다.
 
-    --- 5대 검증 항목 ---
+    --- 5대 검증 항목 (각 파일마다) ---
     1.  **[Scam & Security]**: 
-        (a) 금융 사기(스캠), 악성 URL 호출, 데이터 탈취 코드가 있습니까?
-        (b) 심각한 **보안 취약점** (예: SQL 인젝션, XSS, 하드코딩된 API 키)이 있습니까?
-    2.  **[Validity Check]**: 이 코드 파일이 **구문적으로 유효한(valid)** 코드입니까? (문법 오류)
-    3.  **[Sensational Check]**: **선정적인(suggestive/obscene) 문구**가 있습니까? (예: 변수명, 주석, 문자열)
-    4.  **[Data Collection Check]**: **유저의 민감한 정보** (예: 개인 식별 정보, 금융 정보)를 불필요하게 수집합니까?
-    5.  **[Logic Check]**: **논리적 오류** 또는 **주석/함수명과 실제 동작이 일치하지 않는** 경우가 있습니까? 
+        (a) 금융 사기(스캠), 악성 URL 호출, 데이터 탈취 코드
+        (b) 심각한 **보안 취약점** (예: SQL 인젝션, XSS, 하드코딩된 API 키)
+    2.  **[Validity Check]**: 구문 오류 (문법)
+    3.  **[Sensational Check]**: 선정적인 문구 (주석, 변수명)
+    4.  **[Data Collection Check]**: 불필요한 민감 정보 수집
+    5.  **[Logic Check]**: 논리 오류 (예: 주석과 코드 불일치)
 
-    **[출력 지시사항]**
-    - 답변은 반드시 한글로, Markdown 코드 블록 없이 순수한 JSON 객체(raw JSON object)로만 작성해 주세요.
-    - 문제가 없으면 'issues' 배열에 "없음" 또는 "모든 파일이 유효함" 문자열 하나만 포함해야 합니다.
-    - 문제가 있으면, 문제점만 나열해야 합니다.
-
-    --- JSON 출력 형식 (필수) ---
-    {
-      "runId": "analysis-${new Date().toISOString().split('T')[0]}-XXXXXXXXX",
-      "status": "SUCCESS",
-      "processedAt": "${new Date().toISOString()}",
-      "finalDecision": "SCAM_DETECTED" 또는 "INVALID_FORMAT" 또는 "CONTENT_WARNING" 또는 "CLEAN",
-      "summary": "프로그램 전체에 대한 분석 결과를 요약합니다.",
-      "reportDetails": {
-        "scamCheck": { "detected": true/false, "issues": ["1번(Scam/Security) 문제점 또는 '없음'"] },
-        "validityCheck": { "valid": true/false, "issues": ["2번(Validity) 문제점 또는 '모든 파일이 유효함'"] },
-        "sensationalCheck": { "detected": true/false, "issues": ["3번(Sensational) 문제점 또는 '없음'"] },
-        "dataCollectionCheck": { "detected": true/false, "issues": ["4번(Data Collection) 문제점 또는 '없음'"] },
-        "logicCheck": { "detected": true/false, "issues": ["5번(Logic) 문제점 또는 '없음'"] }
-      }
-    }
-
-    --- [신규] 모범 답안 예시 (Few-Shot Example) ---
-    /*
-      만약 "SELECT * FROM users WHERE name = '" + userName + "'" 처럼
-      'SQL 인젝션' 코드가 발견되면, 당신은 1번 항목(scamCheck)을 'true'로,
-      'finalDecision'을 'SCAM_DETECTED'로 판정하고 다음과 같이 응답해야 합니다.
-      (JSON 예시)
-      "finalDecision": "SCAM_DETECTED",
-      "reportDetails": {
-        "scamCheck": {
-          "detected": true,
-          "issues": ["치명적인 보안 취약점: 'userName' 변수가 SQL 인젝션 공격에 노출되어 있습니다."]
-        },
-        "validityCheck": { "valid": true, "issues": ["모든 파일이 유효함"] },
-        "sensationalCheck": { "detected": false, "issues": ["없음"] },
-        "dataCollectionCheck": { "detected": false, "issues": ["없음"] },
-        "logicCheck": { "detected": false, "issues": ["없음"] }
-      }
-    */
+    --- [가장 중요] finalDecision 결정 로직 (필수) ---
+    각 파일의 'finalDecision' 값은 반드시 다음 4가지 중 하나여야 합니다.
+    1.  'scamCheck.detected' (1번)이 true이면 "SCAM_DETECTED"
+    2.  'validityCheck.valid' (2번)가 false이면 "INVALID_FORMAT"
+    3.  'sensationalCheck.detected' (3번), 'dataCollectionCheck.detected' (4번), 'logicCheck.detected' (5번) 중 하나라도 true이면 "CONTENT_WARNING"
+    - Markdown 코드 블록 없이 순수한 JSON 객체(raw JSON object)로만 작성해 주세요.
  
-    --- finalDecision 결정 로직 (필수) ---
-    1.  'scamCheck.detected' (1번 항목)이 true이면 "SCAM_DETECTED"
-    2.  'validityCheck.valid' (2번 항목)가 false이면 "INVALID_FORMAT"
-    3.  'sensationalCheck.detected' (3번) 또는 'dataCollectionCheck.detected' (4번) 또는 'logicCheck.detected' (5번) 중 하나라도 true이면 "CONTENT_WARNING"
-    4.  위 1, 2, 3에 해당하지 않고 모든 검사를 통과한 경우에만 "CLEAN"
+    --- JSON 출력 예시 (이 형식을 정확히 따를 것) ---
+    {
+      "scam_check.js": {
+        "finalDecision": "SCAM_DETECTED",
+        "summary": "악성 URL로 데이터를 탈취하는 코드가 발견되었습니다.",
+        "reportDetails": {
+          "scamCheck": { "detected": true, "issues": ["악성 URL(atob(...))로 데이터를 전송합니다."] },
+          "validityCheck": { "valid": true, "issues": ["모든 파일이 유효함"] },
+          "sensationalCheck": { "detected": false, "issues": ["없음"] },
+          "dataCollectionCheck": { "detected": false, "issues": ["없음"] },
+          "logicCheck": { "detected": false, "issues": ["없음"] }
+        }
+      },
+      "logic_check.js": {
+        "finalDecision": "CONTENT_WARNING",
+        "summary": "주석과 실제 코드가 일치하지 않는 논리 오류가 있습니다.",
+        "reportDetails": {
+          "scamCheck": { "detected": false, "issues": ["없음"] },
+          "validityCheck": { "valid": true, "issues": ["모든 파일이 유효함"] },
+          "sensationalCheck": { "detected": false, "issues": ["없음"] },
+          "dataCollectionCheck": { "detected": false, "issues": ["없음"] },
+          "logicCheck": { "detected": true, "issues": ["'calculateFinalPrice' 함수가 주석(할인)과 달리 덧셈을 수행합니다."] }
+        }
+      },
+      "utils.js": {
+        "finalDecision": "CLEAN",
+        "summary": "분석 결과, 특별한 문제가 발견되지 않았습니다.",
+        "reportDetails": {
+          "scamCheck": { "detected": false, "issues": ["없음"] },
+          "validityCheck": { "valid": true, "issues": ["모든 파일이 유효함"] },
+          "sensationalCheck": { "detected": false, "issues": ["없음"] },
+          "dataCollectionCheck": { "detected": false, "issues": ["없음"] },
+          "logicCheck": { "detected": false, "issues": ["없음"] }
+        }
+      }
+    }4.  위 1, 2, 3에 해당하지 않고 모든 검사를 통과한 경우에만 "CLEAN"
+    **AI는 절대로 이 4가지 문자열 외의 값(예: "ERROR", "UNKNOWN")을 'finalDecision'에 반환해서는 안 됩니다.**
 
+    --- [가장 중요] JSON 출력 형식 (필수) ---
+    - 답변은 반드시 **단 하나의 JSON 객체**여야 합니다.
+    - 이 객체의 **Key는 "파일명"**이어야 하고, **Value는 해당 파일의 "분석 리포트"**여야 합니다.
+ 
+  
     --- 분석할 프로그램 코드 () ---
     ${programString} 
     ---
