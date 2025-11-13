@@ -46,11 +46,15 @@ async function analyzeProgramWithGemini(programString) {
     5.  **[Logic Check]**: 논리 오류 (예: 주석과 코드 불일치)
 
     --- [가장 중요] finalDecision 결정 로직 (필수) ---
-    각 파일의 'finalDecision' 값은 반드시 다음 4가지 중 하나여야 합니다.
-    1.  'scamCheck.detected' (1번)이 true이면 "SCAM_DETECTED"
-    2.  'validityCheck.valid' (2번)가 false이면 "INVALID_FORMAT"
-    3.  'sensationalCheck.detected' (3번), 'dataCollectionCheck.detected' (4번), 'logicCheck.detected' (5번) 중 하나라도 true이면 "CONTENT_WARNING"
+    - 답변은 반드시 **단 하나의 JSON 객체**여야 합니다.
+    - 이 객체의 **Key는 "파일명"**이어야 하고, **Value는 해당 파일의 "분석 리포트"**여야 합니다.
     - Markdown 코드 블록 없이 순수한 JSON 객체(raw JSON object)로만 작성해 주세요.
+
+    --- 'issues' 배열 출력 규칙 (필수) ---
+    - 각 항목의 'issues' 배열에 문제가 없으면, 다른 설명 없이 **정확히** 다음 문자열 중 하나만 반환해야 합니다.
+    - 'scamCheck', 'sensationalCheck', 'dataCollectionCheck', 'logicCheck'가 문제 없으면: **["없음"]**
+    - 'validityCheck'가 문제 없으면: **["모든 파일이 유효함"]**
+    - (AI는 "구문적으로 유효합니다" 같은 다른 표현을 사용해서는 안 됩니다.)
  
     --- JSON 출력 예시 (이 형식을 정확히 따를 것) ---
     {
