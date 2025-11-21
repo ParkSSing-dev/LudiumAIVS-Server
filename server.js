@@ -20,6 +20,10 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
+app.get('/', (req, res) => {
+    res.status(200).send('Ludium AI Verification Server is Running! 🚀');
+});
+
 const GEMINI_API_KEY = process.env.AI_API_KEY;
 
 if (!GEMINI_API_KEY) {
@@ -28,7 +32,7 @@ if (!GEMINI_API_KEY) {
 }
 
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-const MODEL_NAME = 'gemini-1.5-flash';
+const MODEL_NAME = 'gemini-2.0-flash';
 
 
 /**
