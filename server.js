@@ -7,7 +7,17 @@ const cors = require('cors');
 const app = express();
 const port = 3000;
 
-app.use(cors());
+const corsOptions = {
+  origin: [
+    'http://localhost:5173', // 로컬 테스트용
+    'http://localhost:3000', // 로컬 백엔드 테스트용
+    'https://ludium-aivs.vercel.app' // 배포된 프론트엔드 주소
+  ],
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 const GEMINI_API_KEY = process.env.AI_API_KEY;
@@ -128,11 +138,12 @@ app.post('/analyze', async (req, res) => {
         
         //합쳐진 'programContext' 문자열을 분석 함수로 전달
         const analysisResult = await analyzeProgramWithGemini(programContext);
-        
+        // AI가 ```json ... ``` 같은 마크다운을 섞어 보내면 제거하는 정규식
+        const cleanedResult = analysisResult.replace(/```json|```/g, '').trim();
         // Gemini 분석 결과가 순수 JSON 문자열일 것으로 예상하고 파싱
         let finalResponse;
         try {
-            finalResponse = JSON.parse(analysisResult);
+            finalResponse = JSON.parse(cleanedResult);
         } catch (e) {
             console.error("모델 응답 파싱 오류:", e);
             return res.status(500).json({
