@@ -5,7 +5,7 @@ const { GoogleGenAI } = require('@google/genai');
 const cors = require('cors');
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 const corsOptions = {
   origin: [
@@ -191,5 +191,4 @@ app.post('/analyze', async (req, res) => {
 // --- 서버 시작 --- (문구는 터미널에 표기되므로 신경 쓰지 않아도 되!!)
 app.listen(port, () => {
     console.log(`JSON 분석 서버가 http://localhost:${port} 에서 실행 중입니다.`);
-    console.log(`분석을 위해 POST 요청을 http://localhost:${port}/analyze 로 보내세요.`);
 });
