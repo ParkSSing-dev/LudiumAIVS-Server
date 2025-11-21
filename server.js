@@ -24,7 +24,7 @@ app.get('/', (req, res) => {
     res.status(200).send('Ludium AI Verification Server is Running! 🚀');
 });
 
-const GEMINI_API_KEY = process.env.AI_API_KEY;
+const GEMINI_API_KEY = process.env.API_AI_KEY;
 
 if (!GEMINI_API_KEY) {
     console.error("오류: AI_API_KEY 환경 변수가 설정되지 않았습니다.");
